@@ -1,0 +1,37 @@
+{
+  "name": "veil-dashboard",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "extension:build": "node extension/scripts/build.mjs",
+    "extension:test": "node extension/tests/run-tests.mjs",
+    "extension:watch": "node extension/scripts/build.mjs --watch",
+    "extension:typecheck": "tsc -p extension/tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.108.1",
+    "lucide-react": "^0.468.0",
+    "next": "15.5.19",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "recharts": "^3.8.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/chrome": "^0.0.287",
+    "@types/react": "^19.0.3",
+    "@types/react-dom": "^19.0.2",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^9.17.0",
+    "eslint-config-next": "15.5.19",
+    "esbuild": "^0.24.2",
+    "jsdom": "^26.0.0",
+    "postcss": "^8.4.49",
+    "tailwindcss": "3.4.19",
+    "typescript": "^5.7.2"
+  }
+}
