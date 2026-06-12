@@ -9,12 +9,10 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        ink: "#05080d",
-        panel: "#0b111b",
-        cyan: "#19e6c7",
-      },
-      boxShadow: {
-        glow: "0 0 40px rgba(25, 230, 199, 0.08)",
+        ink: "#09090b", // zinc-950
+        panel: "#18181b", // zinc-900
+        cyan: "#0ea5e9", // indigo/blue vibe for enterprise instead of raw cyan
+        primary: "#3b82f6", // blue-500
       },
       keyframes: {
         pulseRing: {

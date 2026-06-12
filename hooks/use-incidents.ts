@@ -41,8 +41,10 @@ export function useIncidents() {
 
     void loadIncidents();
 
+    // Use a unique channel name to avoid collisions when React remounts
+    const channelName = `veil-incidents-${Math.random().toString(36).slice(2, 11)}`;
     const channel = client
-      .channel("veil-incidents")
+      .channel(channelName)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "incidents" },
