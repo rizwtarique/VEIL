@@ -42,6 +42,8 @@ npm run extension:watch
 ```
 
 After a rebuild, click the reload icon for Veil on `chrome://extensions`.
+Then reload every already-open ChatGPT, Gemini, or Claude tab. Chrome invalidates
+the old content-script context when an unpacked extension is reloaded.
 
 ## Configure Supabase
 
@@ -113,6 +115,36 @@ API key: api_key=abcdefghijklmnopqrstuvwx
 ```
 
 Do not use real credentials during a demo.
+
+## Pipeline Diagnostic
+
+Open DevTools on a supported AI site. In the Console execution-context selector,
+choose **Veil - AI Prompt Protection**, then run:
+
+```js
+await window.testVeilPipeline()
+```
+
+A successful response includes:
+
+```js
+{
+  ok: true,
+  requestId: "...",
+  incidentId: 123
+}
+```
+
+The command uses the same production path as a real detection:
+
+```text
+content script -> chrome.runtime.sendMessage -> background service worker
+-> Supabase REST insert -> acknowledged row ID
+```
+
+If the response says the extension context was invalidated, reload the AI tab.
+If it reports no background response, open `chrome://extensions`, locate Veil,
+and inspect the service worker console.
 
 ## Button Behavior
 

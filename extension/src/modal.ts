@@ -97,19 +97,23 @@ export function showWarningModal(
     `;
 
     const finish = (action: ModalAction) => {
+      console.log(`[VEIL] ${action.charAt(0).toUpperCase() + action.slice(1)} Clicked`);
       document.removeEventListener("keydown", handleEscape, true);
       host.remove();
+      console.log("[VEIL] Modal Closed");
       resolve(action);
     };
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") finish("cancel");
     };
 
-    root.querySelectorAll<HTMLButtonElement>("button[data-action]").forEach((button) => {
+    const buttons = root.querySelectorAll<HTMLButtonElement>("button[data-action]");
+    buttons.forEach((button) => {
       button.addEventListener("click", () => {
         finish(button.dataset.action as ModalAction);
       });
     });
+    console.log("[VEIL] Modal Opened", "Buttons attached:", buttons.length);
     root.querySelector<HTMLButtonElement>(".sanitize")?.focus();
     document.addEventListener("keydown", handleEscape, true);
     document.documentElement.append(host);

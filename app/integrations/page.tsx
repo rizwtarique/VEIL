@@ -5,6 +5,7 @@ import { Puzzle, CheckCircle2, XCircle, Clock } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
+import { toast } from "sonner";
 
 const INTEGRATIONS = [
   { id: "chatgpt", name: "ChatGPT", type: "Web Extension", status: "active", lastSync: "2 mins ago" },
@@ -20,7 +21,12 @@ export default function IntegrationsPage() {
     setTesting(id);
     setTimeout(() => {
       setTesting(null);
+      toast.success(`Connection to ${id} successful.`);
     }, 1500);
+  };
+
+  const handleAddIntegration = () => {
+    toast.info("Add Integration wizard opening (mock).");
   };
 
   return (
@@ -73,6 +79,7 @@ export default function IntegrationsPage() {
         ))}
 
         <motion.div
+          onClick={handleAddIntegration}
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: INTEGRATIONS.length * 0.1 }}
@@ -88,3 +95,4 @@ export default function IntegrationsPage() {
     </Shell>
   );
 }
+

@@ -21,6 +21,13 @@ const MOCK_PLATFORMS = [
   { name: "Gemini", value: 10 },
 ];
 
+const MOCK_CATEGORIES = [
+  { name: "Cloud Keys", value: 42 },
+  { name: "Credentials", value: 38 },
+  { name: "PII", value: 15 },
+  { name: "Financial", value: 5 },
+];
+
 export default function AnalyticsPage() {
   const { incidents } = useIncidents();
 
@@ -62,7 +69,7 @@ export default function AnalyticsPage() {
           className="panel p-5 lg:col-span-2 h-[400px]"
         >
           <h3 className="text-sm font-semibold text-zinc-100 mb-6">Threat Volume (7 Days)</h3>
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" minHeight={0} minWidth={0}>
             <AreaChart data={MOCK_TRENDS} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
               <defs>
                 <linearGradient id="colorCritical" x1="0" y1="0" x2="0" y2="1">
@@ -91,9 +98,9 @@ export default function AnalyticsPage() {
           initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
           className="panel p-5 h-[400px]"
         >
-          <h3 className="text-sm font-semibold text-zinc-100 mb-6">Platform Distribution</h3>
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={MOCK_PLATFORMS} layout="vertical" margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+          <h3 className="text-sm font-semibold text-zinc-100 mb-6">Category Distribution</h3>
+          <ResponsiveContainer width="100%" height="100%" minHeight={0} minWidth={0}>
+            <BarChart data={MOCK_CATEGORIES} layout="vertical" margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#27272a" horizontal={true} vertical={false} />
               <XAxis type="number" stroke="#52525b" fontSize={12} tickLine={false} axisLine={false} />
               <YAxis dataKey="name" type="category" stroke="#52525b" fontSize={12} tickLine={false} axisLine={false} width={80} />
@@ -101,7 +108,7 @@ export default function AnalyticsPage() {
                 cursor={{ fill: '#27272a', opacity: 0.4 }}
                 contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', borderRadius: '8px' }}
               />
-              <Bar dataKey="value" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={24} />
+              <Bar dataKey="value" fill="#19e6c7" radius={[0, 4, 4, 0]} barSize={24} />
             </BarChart>
           </ResponsiveContainer>
         </motion.div>

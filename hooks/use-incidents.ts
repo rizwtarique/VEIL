@@ -1,24 +1,62 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { demoIncidents } from "@/lib/demo-data";
 import { hasSupabaseConfig, supabase } from "@/lib/supabase";
 import type { Incident } from "@/types/incident";
 
+import type { RealtimeChannel } from "@supabase/supabase-js";
+
 type ConnectionState = "connecting" | "live" | "demo" | "error";
 
-export function useIncidents() {
-  const [incidents, setIncidents] = useState<Incident[]>(
-    hasSupabaseConfig ? [] : demoIncidents,
-  );
-  const [connectionState, setConnectionState] = useState<ConnectionState>(
-    hasSupabaseConfig ? "connecting" : "demo",
-  );
-  const [error, setError] = useState<string | null>(null);
+// --- Global Singleton Store for Realtime Incidents ---
+// Prevents multiple WebSocket connections when useIncidents is used in multiple components.
 
-  const loadIncidents = useCallback(async () => {
-    if (!supabase) return;
+class IncidentStore {
+  private incidents: Incident[] = hasSupabaseConfig ? [] : demoIncidents;
+  private connectionState: ConnectionState = hasSupabaseConfig ? "connecting" : "demo";
+  private error: string | null = null;
+  private listeners: Set<() => void> = new Set();
+  private isSubscribed = false;
+  private channel: RealtimeChannel | null = null;
 
+  private currentSnapshot = {
+    incidents: this.incidents,
+    connectionState: this.connectionState,
+    error: this.error,
+  };
+
+  constructor() {
+    if (hasSupabaseConfig) {
+      this.init();
+    }
+  }
+
+  private emit() {
+    this.currentSnapshot = {
+      incidents: this.incidents,
+      connectionState: this.connectionState,
+      error: this.error,
+    };
+    this.listeners.forEach((listener) => listener());
+  }
+
+  subscribe = (listener: () => void) => {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  };
+
+  getSnapshot = () => {
+    return this.currentSnapshot;
+  };
+
+  async init() {
+    if (this.isSubscribed || !supabase) return;
+    this.isSubscribed = true;
+
+    // Initial Fetch
     const { data, error: queryError } = await supabase
       .from("incidents")
       .select("*")
@@ -26,68 +64,58 @@ export function useIncidents() {
       .limit(100);
 
     if (queryError) {
-      setError(queryError.message);
-      setConnectionState("error");
+      this.error = queryError.message;
+      this.connectionState = "error";
+      this.emit();
       return;
     }
 
-    setIncidents((data as Incident[]) ?? []);
-    setError(null);
-  }, []);
+    this.incidents = (data as Incident[]) ?? [];
+    this.emit();
 
-  useEffect(() => {
-    const client = supabase;
-    if (!client) return;
-
-    void loadIncidents();
-
-    // Use a unique channel name to avoid collisions when React remounts
-    const channelName = `veil-incidents-${Math.random().toString(36).slice(2, 11)}`;
-    const channel = client
+    // Setup Realtime WebSocket
+    const channelName = `veil-global-feed`;
+    this.channel = supabase
       .channel(channelName)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "incidents" },
         (payload) => {
-          setIncidents((current) => {
-            if (payload.eventType === "DELETE") {
-              return current.filter(
-                (incident) => String(incident.id) !== String(payload.old.id),
-              );
-            }
-
-            const incoming = payload.new as Incident;
-            const withoutExisting = current.filter(
-              (incident) => String(incident.id) !== String(incoming.id),
+          if (payload.eventType === "DELETE") {
+            this.incidents = this.incidents.filter(
+              (incident) => String(incident.id) !== String(payload.old.id),
             );
-
-            return [incoming, ...withoutExisting]
-              .sort(
-                (a, b) =>
-                  new Date(b.created_at).getTime() -
-                  new Date(a.created_at).getTime(),
-              )
-              .slice(0, 100);
-          });
+          } else if (payload.eventType === "INSERT") {
+            const incoming = payload.new as Incident;
+            this.incidents = [incoming, ...this.incidents].slice(0, 100);
+          }
+          this.emit();
         },
       )
       .subscribe((status) => {
-        if (status === "SUBSCRIBED") setConnectionState("live");
+        if (status === "SUBSCRIBED") this.connectionState = "live";
         if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-          setConnectionState("error");
-          setError("Realtime connection could not be established.");
+          this.connectionState = "error";
+          this.error = "Realtime connection severed.";
         }
+        this.emit();
       });
+  }
 
-    return () => {
-      void client.removeChannel(channel);
-    };
-  }, [loadIncidents]);
+  async refresh() {
+    this.isSubscribed = false;
+    if (this.channel) await supabase?.removeChannel(this.channel);
+    await this.init();
+  }
+}
 
+const store = new IncidentStore();
+
+export function useIncidents() {
+  const state = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
+  
   return {
-    incidents,
-    connectionState,
-    error,
-    refresh: loadIncidents,
+    ...state,
+    refresh: () => store.refresh(),
   };
 }

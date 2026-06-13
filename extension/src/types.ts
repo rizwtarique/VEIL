@@ -1,9 +1,22 @@
 export type FindingType =
   | "AWS Key"
+  | "OpenAI Key"
+  | "Anthropic Key"
+  | "GitHub Token"
+  | "Google API Key"
+  | "Azure Secret"
+  | "JWT Token"
+  | "Private Key"
+  | "SSH Key"
+  | "Database URI"
+  | "Supabase Key"
+  | "IP Address"
+  | "Internal URL"
   | "Email Address"
   | "Password"
   | "Phone Number"
-  | "API Key";
+  | "Credit Card"
+  | "Generic API Key";
 
 export type Severity = "low" | "medium" | "critical";
 
@@ -11,6 +24,7 @@ export interface Finding {
   type: FindingType;
   count: number;
   weight: number;
+  confidence?: "low" | "medium" | "high";
 }
 
 export interface DetectionResult {
@@ -25,7 +39,7 @@ export interface IncidentPayload {
   severity: Severity;
   risk_score: number;
   findings: string[];
-  prompt_preview: string;
+  prompt_preview?: string | null;
 }
 
 export type ModalAction = "cancel" | "continue" | "sanitize";

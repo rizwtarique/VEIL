@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Veil - AI Prompt Protection",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Detect and redact sensitive information before it reaches AI platforms.",
   "permissions": ["storage"],
   "host_permissions": [

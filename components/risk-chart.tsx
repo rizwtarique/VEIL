@@ -73,6 +73,7 @@ export function RiskChart({ incidents }: RiskChartProps) {
           height="100%"
           initialDimension={{ width: 700, height: 288 }}
           minWidth={0}
+          minHeight={0}
           width="100%"
         >
           <AreaChart data={data} margin={{ top: 8, right: 6, left: -25, bottom: 0 }}>

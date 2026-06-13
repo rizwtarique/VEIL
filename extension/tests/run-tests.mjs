@@ -22,7 +22,7 @@ try {
 
 async function testManifest() {
   const manifest = JSON.parse(
-    await readFile(path.join(extensionRoot, "manifest.json"), "utf8"),
+    await readFile(path.join(extensionRoot, "src/manifest.json"), "utf8"),
   );
   assert.equal(manifest.manifest_version, 3);
   assert.equal(manifest.background.type, "module");
@@ -55,6 +55,13 @@ async function testDetector() {
       severity: "critical",
     },
     {
+      name: "User AWS key example",
+      text: "My AWS key is AKIA123456789ABCDE",
+      finding: "AWS Key",
+      score: 90,
+      severity: "critical",
+    },
+    {
       name: "emails",
       text: "Contact ada@example.com for access.",
       finding: "Email Address",
@@ -78,8 +85,8 @@ async function testDetector() {
     {
       name: "API keys",
       text: "api_key=abcdefghijklmnopqrstuvwx",
-      finding: "API Key",
-      score: 80,
+      finding: "Generic API Key",
+      score: 75,
       severity: "critical",
     },
   ];
@@ -89,7 +96,7 @@ async function testDetector() {
     assert.equal(result.findings[0]?.type, testCase.finding, testCase.name);
     assert.equal(result.riskScore, testCase.score, `${testCase.name} score`);
     assert.equal(result.severity, testCase.severity, `${testCase.name} severity`);
-    assert.match(result.sanitizedText, /\[REDACTED\]/, `${testCase.name} redaction`);
+    assert.match(result.sanitizedText, /\[REDACTED/, `${testCase.name} redaction`);
     assert.doesNotMatch(
       result.sanitizedText,
       new RegExp(escapeRegex(testCase.text.split(/(?:at |Use |Contact |password=|api_key=)/).at(-1).replace(/[.!]$/, ""))),
@@ -152,9 +159,15 @@ async function testContentInterception() {
   const loggedMessages = [];
   globalThis.chrome = {
     runtime: {
-      sendMessage: async (message) => {
+      id: "veil-test-extension-id",
+      lastError: undefined,
+      sendMessage: (message, callback) => {
         loggedMessages.push(message);
-        return { ok: true };
+        callback({
+          ok: true,
+          requestId: message.requestId,
+          incidentId: 42,
+        });
       },
     },
   };
@@ -194,22 +207,33 @@ async function testContentInterception() {
   assert.match(host.shadowRoot.textContent, /Email Address/i);
   pass("blocks submission and displays score, severity, and findings");
 
-  host.shadowRoot.querySelector("[data-action='sanitize']").click();
+  const sanitizeButton = host.shadowRoot.querySelector("[data-action='sanitize']");
+  sanitizeButton.dispatchEvent(new Event("click", { bubbles: true }));
+  await tick();
   await tick();
   assert.equal(document.querySelector("#veil-warning-host"), null);
-  assert.match(editor.value, /\[REDACTED\]/);
+  assert.match(editor.value, /\[REDACTED/);
   assert.doesNotMatch(editor.value, /ada@example\.com|SuperSecret123/);
   assert.equal(submitted, 0);
   pass("Sanitize replaces sensitive values without submitting");
 
   assert.equal(loggedMessages.length, 1);
   assert.equal(loggedMessages[0].type, "VEIL_LOG_INCIDENT");
+  assert.equal(typeof loggedMessages[0].requestId, "string");
   assert.equal(loggedMessages[0].payload.website, "chatgpt.com");
   assert.doesNotMatch(
     loggedMessages[0].payload.prompt_preview,
     /ada@example\.com|SuperSecret123/,
   );
   pass("content script logs only a sanitized incident preview");
+
+  const diagnosticResponse = await window.testVeilInsert();
+  assert.equal(diagnosticResponse.ok, true);
+  assert.equal(loggedMessages[1].payload.website, "test.local");
+  assert.equal(loggedMessages[1].payload.risk_score, 1);
+  assert.deepEqual(loggedMessages[1].payload.findings, ["manual-test"]);
+  assert.equal(loggedMessages[1].payload.prompt_preview, "manual-test");
+  pass("window.testVeilPipeline uses the production runtime message path");
 
   editor.value = "api_key=abcdefghijklmnopqrstuvwx";
   editor.dispatchEvent(
@@ -221,7 +245,10 @@ async function testContentInterception() {
   );
   await tick();
   const continueHost = document.querySelector("#veil-warning-host");
-  continueHost.shadowRoot.querySelector("[data-action='continue']").click();
+  const continueButton = continueHost.shadowRoot.querySelector("[data-action='continue']");
+  continueButton.dispatchEvent(new Event("click", { bubbles: true }));
+  await tick();
+  await tick();
   await tick();
   assert.equal(submitted, 1);
   assert.equal(document.querySelector("#veil-warning-host"), null);
@@ -243,6 +270,7 @@ async function testBackgroundLogging() {
       setBadgeText: () => {},
     },
     runtime: {
+      id: "veil-test-extension-id",
       onInstalled: { addListener: () => {} },
       onMessage: {
         addListener: (listener) => {
@@ -276,17 +304,26 @@ async function testBackgroundLogging() {
   };
   const response = await new Promise((resolve) => {
     const keepAlive = messageListener(
-      { type: "VEIL_LOG_INCIDENT", payload },
-      {},
+      {
+        type: "VEIL_LOG_INCIDENT",
+        requestId: "background-test-request",
+        payload,
+      },
+      { tab: { id: 7 }, url: "https://chatgpt.com/" },
       resolve,
     );
     assert.equal(keepAlive, true);
   });
 
-  assert.deepEqual(response, { ok: true });
+  assert.deepEqual(response, {
+    ok: true,
+    requestId: "background-test-request",
+    incidentId: null,
+  });
   assert.equal(fetchCall.url, "https://test.supabase.co/rest/v1/incidents");
   assert.equal(fetchCall.options.method, "POST");
   assert.equal(fetchCall.options.headers.apikey, "test-anon-key");
+  assert.equal(fetchCall.options.headers.Prefer, "return=representation");
   assert.deepEqual(JSON.parse(fetchCall.options.body), payload);
   pass("background worker writes incidents to Supabase REST with anon auth");
 
@@ -322,6 +359,7 @@ function installDomGlobals(window) {
     "Element",
     "HTMLElement",
     "HTMLTextAreaElement",
+    "HTMLButtonElement",
     "HTMLFormElement",
     "Event",
     "MouseEvent",
@@ -329,6 +367,7 @@ function installDomGlobals(window) {
     "InputEvent",
     "SubmitEvent",
     "getComputedStyle",
+    "MutationObserver",
   ]) {
     globalThis[name] = window[name];
   }

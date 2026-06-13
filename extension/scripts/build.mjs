@@ -29,18 +29,16 @@ async function readEnv() {
 async function copyStaticFiles() {
   await mkdir(outdir, { recursive: true });
   await Promise.all([
-    copyFile(path.join(extensionRoot, "manifest.json"), path.join(outdir, "manifest.json")),
+    copyFile(
+      path.join(extensionRoot, "src/manifest.json"),
+      path.join(outdir, "manifest.json"),
+    ),
     copyFile(path.join(extensionRoot, "popup.html"), path.join(outdir, "popup.html")),
   ]);
 }
 
 const env = await readEnv();
-const options = {
-  entryPoints: {
-    background: path.join(extensionRoot, "src/background.ts"),
-    content: path.join(extensionRoot, "src/content.ts"),
-    popup: path.join(extensionRoot, "src/popup.ts"),
-  },
+const commonOptions = {
   bundle: true,
   define: {
     __SUPABASE_URL__: JSON.stringify(
@@ -48,8 +46,6 @@ const options = {
     ),
     __SUPABASE_ANON_KEY__: JSON.stringify(env.VEIL_SUPABASE_ANON_KEY ?? ""),
   },
-  entryNames: "[name]",
-  format: "esm",
   logLevel: "info",
   minify: !watch,
   outdir,
@@ -58,14 +54,36 @@ const options = {
   target: "chrome120",
 };
 
+const builds = [
+  {
+    ...commonOptions,
+    entryPoints: {
+      background: path.join(extensionRoot, "src/background.ts"),
+    },
+    format: "esm",
+  },
+  {
+    ...commonOptions,
+    entryPoints: {
+      content: path.join(extensionRoot, "src/content.ts"),
+      popup: path.join(extensionRoot, "src/popup.ts"),
+    },
+    format: "iife",
+  },
+];
+
 if (!watch) {
   await rm(outdir, { recursive: true, force: true });
   await copyStaticFiles();
-  await build(options);
+  for (const options of builds) {
+    await build(options);
+  }
   console.log(`Veil extension built at ${outdir}`);
 } else {
   await copyStaticFiles();
-  const buildContext = await context(options);
-  await buildContext.watch();
+  for (const options of builds) {
+    const buildContext = await context(options);
+    await buildContext.watch();
+  }
   console.log(`Watching Veil extension sources at ${extensionRoot}`);
 }

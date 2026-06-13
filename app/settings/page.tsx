@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { useState } from "react";
 import { Bell, ShieldAlert, SlidersHorizontal, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 const TABS = [
   { id: "general", label: "General", icon: SlidersHorizontal },
@@ -17,6 +18,21 @@ export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState("general");
   const [blockMode, setBlockMode] = useState(true);
   const [emailAlerts, setEmailAlerts] = useState(true);
+  const [workspaceName, setWorkspaceName] = useState("Global Tech Inc.");
+
+  const handleSave = () => {
+    toast.success("Settings saved successfully.");
+  };
+
+  const toggleBlockMode = () => {
+    setBlockMode(!blockMode);
+    toast.info(`Strict Blocking Mode ${!blockMode ? 'enabled' : 'disabled'}`);
+  };
+
+  const toggleEmailAlerts = () => {
+    setEmailAlerts(!emailAlerts);
+    toast.info(`Email Alerts ${!emailAlerts ? 'enabled' : 'disabled'}`);
+  };
 
   return (
     <Shell title="Settings" subtitle="Workspace Configuration">
@@ -56,7 +72,12 @@ export default function SettingsPage() {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-zinc-400 mb-1.5">Workspace Name</label>
-                    <input type="text" defaultValue="Global Tech Inc." className="w-full bg-zinc-900 border border-zinc-800 rounded-md px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-primary" />
+                    <input 
+                      type="text" 
+                      value={workspaceName} 
+                      onChange={(e) => setWorkspaceName(e.target.value)}
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded-md px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-primary" 
+                    />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-zinc-400 mb-1.5">Retention Period</label>
@@ -67,7 +88,7 @@ export default function SettingsPage() {
                     </select>
                   </div>
                   <div className="pt-4 border-t border-zinc-800">
-                    <button className="bg-primary hover:bg-primary/90 text-white text-sm font-medium px-4 py-2 rounded-md transition-colors">
+                    <button onClick={handleSave} className="bg-primary hover:bg-primary/90 text-white text-sm font-medium px-4 py-2 rounded-md transition-colors">
                       Save Changes
                     </button>
                   </div>
@@ -84,7 +105,7 @@ export default function SettingsPage() {
                     <p className="text-xs text-zinc-500 mt-1">Automatically redact high-severity secrets before they leave the browser.</p>
                   </div>
                   <button 
-                    onClick={() => setBlockMode(!blockMode)}
+                    onClick={toggleBlockMode}
                     className={cn("w-10 h-6 rounded-full transition-colors relative", blockMode ? "bg-primary" : "bg-zinc-700")}
                   >
                     <span className={cn("absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform", blockMode ? "translate-x-4" : "translate-x-0")} />
@@ -102,7 +123,7 @@ export default function SettingsPage() {
                     <p className="text-xs text-zinc-500 mt-1">Send immediate alerts to security admins for score {'>'} 90.</p>
                   </div>
                   <button 
-                    onClick={() => setEmailAlerts(!emailAlerts)}
+                    onClick={toggleEmailAlerts}
                     className={cn("w-10 h-6 rounded-full transition-colors relative", emailAlerts ? "bg-primary" : "bg-zinc-700")}
                   >
                     <span className={cn("absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform", emailAlerts ? "translate-x-4" : "translate-x-0")} />

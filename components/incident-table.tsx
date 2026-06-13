@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import type { Incident } from "@/types/incident";
 import { format } from "date-fns";
-import { Search, Download, Filter, ChevronDown, ChevronUp, ArrowRight, X } from "lucide-react";
+import { Search, Download, Filter, ChevronDown, ChevronUp, ArrowRight, X, Braces, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -94,6 +94,21 @@ export function IncidentTable({ incidents }: IncidentTableProps) {
     a.click();
   };
 
+  const exportJSON = () => {
+    const dataStr = JSON.stringify(filteredAndSorted, null, 2);
+    const blob = new Blob([dataStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `veil-incidents-${format(new Date(), 'yyyy-MM-dd')}.json`;
+    a.click();
+  };
+
+  const [page, setPage] = useState(1);
+  const itemsPerPage = 10;
+  const totalPages = Math.ceil(filteredAndSorted.length / itemsPerPage);
+  const paginatedItems = filteredAndSorted.slice((page - 1) * itemsPerPage, page * itemsPerPage);
+
   return (
     <div className="flex flex-col gap-4">
       {/* Toolbar */}
@@ -104,7 +119,10 @@ export function IncidentTable({ incidents }: IncidentTableProps) {
             type="text"
             placeholder="Search platform or prompt..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
             className="w-full bg-zinc-900 border border-zinc-800 rounded-lg pl-9 pr-4 py-2 text-sm text-zinc-100 focus:outline-none focus:border-primary transition-colors"
           />
         </div>
@@ -113,7 +131,10 @@ export function IncidentTable({ incidents }: IncidentTableProps) {
             <Filter size={16} className="text-zinc-500" />
             <select
               value={severityFilter}
-              onChange={(e) => setSeverityFilter(e.target.value)}
+              onChange={(e) => {
+                setSeverityFilter(e.target.value);
+                setPage(1);
+              }}
               className="bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-primary transition-colors appearance-none cursor-pointer"
             >
               <option value="all">All Severities</option>
@@ -123,13 +144,24 @@ export function IncidentTable({ incidents }: IncidentTableProps) {
               <option value="low">Low</option>
             </select>
           </div>
-          <button
-            onClick={exportCSV}
-            className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-100 px-3 py-2 rounded-lg text-sm transition-colors border border-zinc-700"
-          >
-            <Download size={16} />
-            <span className="hidden sm:inline">Export</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={exportCSV}
+              className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-100 px-3 py-2 rounded-lg text-sm transition-colors border border-zinc-700"
+              title="Export CSV"
+            >
+              <Download size={16} />
+              <span className="hidden sm:inline">CSV</span>
+            </button>
+            <button
+              onClick={exportJSON}
+              className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-100 px-3 py-2 rounded-lg text-sm transition-colors border border-zinc-700"
+              title="Export JSON"
+            >
+              <Braces size={16} />
+              <span className="hidden sm:inline">JSON</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -155,7 +187,7 @@ export function IncidentTable({ incidents }: IncidentTableProps) {
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-800/60">
-            {filteredAndSorted.map((incident) => (
+            {paginatedItems.map((incident) => (
               <tr key={incident.id} className="hover:bg-zinc-800/20 transition-colors group cursor-pointer" onClick={() => setSelectedIncident(incident)}>
                 <td className="px-6 py-4 whitespace-nowrap text-zinc-300 font-mono text-xs">
                   {format(new Date(incident.created_at), "MMM d, HH:mm:ss")}
@@ -186,6 +218,32 @@ export function IncidentTable({ incidents }: IncidentTableProps) {
             )}
           </tbody>
         </table>
+
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-6 py-4 border-t border-zinc-800/60 bg-zinc-900/20">
+            <p className="text-xs text-zinc-500">
+              Showing <span className="text-zinc-300">{(page - 1) * itemsPerPage + 1}</span> to{" "}
+              <span className="text-zinc-300">{Math.min(page * itemsPerPage, filteredAndSorted.length)}</span> of{" "}
+              <span className="text-zinc-300">{filteredAndSorted.length}</span> results
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="p-1 rounded bg-zinc-800 border border-zinc-700 disabled:opacity-50 text-zinc-400"
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <button
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                className="p-1 rounded bg-zinc-800 border border-zinc-700 disabled:opacity-50 text-zinc-400"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Drawer */}
